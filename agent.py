@@ -14,7 +14,7 @@ import time
 #from environment import Environment
 from settings import Settings
 from collections import deque
-from build_neural_networks import build_actor_network
+from build_neural_networks import build_Q_network
 from neural_network_utilities import get_variables, copy_variables
 
 from pyvirtualdisplay import Display # for rendering
@@ -84,7 +84,7 @@ class Agent:
         #############################
         #### Generate this Actor ####
         #############################
-        self.policy = build_actor_network(self.state_placeholder, trainable = False, scope = agent_name)
+        self.policy = build_Q_network(self.state_placeholder, trainable = False, reuse = False, scope = agent_name)
         
         # Getting the non-trainable parameters from this actor, so that we will know where to place the updated parameters
         self.variables = get_variables(scope = agent_name, trainable = False) 
@@ -125,8 +125,8 @@ class Agent:
             ####################################            
             # Resetting the environment for this episode
             state = self.env.reset()
-            # Normalizing the state to 1 separately along each dimension
-            state = state/Settings.UPPER_STATE_BOUND
+            
+            # Possibly normalize the state here
             
             # Clearing the N-step memory for this episode
             n_step_memory.clear()
@@ -137,16 +137,17 @@ class Agent:
             # Calculating the noise scale for this episode. The noise scale 
             # allows for changing the amount of noise added to the actor during training.
             if test_time:
-                # It's test time! Run this episode without noise to evaluate performance.
-                noise_scale = 0
+                # It's test time! Run this episode without exploration to evaluate performance.
+                exploration_probability = 0
                 
                 # Additionally, if it's time to render, make a statement to the user
                 if Settings.RECORD_VIDEO and episode_number % (Settings.CHECK_GREEDY_PERFORMANCE_EVERY_NUM_EPISODES*Settings.VIDEO_RECORD_FREQUENCY) == 0:
                     print("Rendering Actor %i at episode %i" % (self.n_agent, episode_number))
                 
             else:
-                # Regular training episode, use noise.
-                noise_scale = Settings.NOISE_SCALE * Settings.NOISE_SCALE_DECAY ** episode_number
+                # Regular training episode, use exploration.
+                # Exploration probability starts at 1.0 but is reduced to 0.1 ovwe many episodes
+                exploration_probability = np.max([Settings.NOISE_SCALE * Settings.NOISE_SCALE_DECAY ** episode_number, 0.1])
             
             # Resetting items for this episode
             episode_reward = 0
@@ -173,33 +174,30 @@ class Agent:
                 ##############################
                 ##### Running the Policy #####
                 ##############################
-                action = self.sess.run(self.policy, feed_dict = {self.state_placeholder: state[None]})[0]
+                # Gets the expected value for each action
+                action_values = self.sess.run(self.policy, feed_dict = {self.state_placeholder: state[None]})[0]
                 
-                # Clipping the action to be within limits
-                action = np.clip(action, Settings.LOWER_ACTION_BOUND, Settings.UPPER_ACTION_BOUND)
+                # Extract the action number that we should perform
+                action = np.argmax(action_values)
                 
-                # Calculating random action to be added to the noise chosen from the policy to force exploration.
-                if Settings.UNIFORM_OR_GAUSSIAN_NOISE:
-                    # Uniform noise (sampled between -/+ the action range)
-                    exploration_noise = np.random.uniform(low = -Settings.ACTION_RANGE, high = Settings.ACTION_RANGE, size = Settings.ACTION_SIZE)*noise_scale
-                else:                    
-                    # Gaussian noise (standard normal distribution scaled to half the action range)
-                    exploration_noise = np.random.normal(size = Settings.ACTION_SIZE)*Settings.ACTION_RANGE/2.0*noise_scale # random number multiplied by half the range
-                
-                # Add exploration noise to original action, and clip it again
-                action = np.clip(action + exploration_noise, Settings.LOWER_ACTION_BOUND, Settings.UPPER_ACTION_BOUND)
-                
+                # Checking for exploration
+                if np.random.uniform() < exploration_probability:
+                    # Let's explore! Instead of the selected action, we'll try a 
+                    # completely random action instead.
+                    action = np.random.randint(0, Settings.ACTION_SIZE)  
+
                 ################################################
                 #### Step the dynamics forward one timestep ####
                 ################################################
+
                 next_state, reward, done, _ = self.env.step(action)
+
                 
                 # Add reward we just received to running total
                 episode_reward += reward
                 
-                # Normalize the state and (possibly in the future) reward
-                next_state = next_state/Settings.UPPER_STATE_BOUND
-                reward = reward/100.0
+                # Normalize the state here if needed
+                
                                 
                 # Store the data in this temporary buffer until we calculate the n-step return
                 n_step_memory.append((state, action, reward))

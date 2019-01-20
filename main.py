@@ -1,54 +1,33 @@
 """
-Main script that runs the D4PG learning algorithm 
+Main script that runs the DQN learning algorithm 
 (https://arxiv.org/pdf/1804.08617)
 
-It features the standard DDPG algorithm with a number 
+It features the standard DQN algorithm with a number 
 of improvements from other researchers.
 Namely:
-    Distributed rollouts           (https://arxiv.org/pdf/1602.01783)
-    A distributional critic        (http://arxiv.org/abs/1707.06887)
+    Distributed rollouts           (https://arxiv.org/pdf/1602.01783) *using python's 'threading' library
     N-step returns                 (https://arxiv.org/pdf/1602.01783)
-****Prioritized experience replay  (http://arxiv.org/abs/1511.05952) **** NOT YET IMPLEMENTED
 
-This implementation does not use the 
-ApeX framework (https://arxiv.org/abs/1803.00933) as the original authors did.
-Instead, it uses python's 'threading' library.
+The algorithm is trained on PTStephD's Rubix Cube environment. It will (hopefully)
+learn how to solve a Rubix cube from any initial state in as few moves as possible.
 
 
 ===== Notes =====
 Need to implement:  
-    - Prioritized experience replay (http://arxiv.org/abs/1511.05952)
-       Note: I may not even implement this because some results show it doesn't
-             really help much.
-    - My own dynamics
+    - Full code sweep and cleanup
     
 Things to remember:
-    - Seed is set but it does not fully work. Results are similar but not identical.
-       More similar than not setting the seed. Strange.
-    - CPU is used to run everything as it was noticed to be faster than using the 
-       GPU (maybe due to all the copying). This could be re-investigated for a 
-       larger mini_batch_size/neuron count (was done with batch = 128, neurons = 40)
-    - The choise of gaussian or uniform noise is in the Settings. I prefer uniform but other use gaussian.
-    - If attempting to render episodes using gym, you must run this on Linux or a WSL image!
-    - I'm not satisfied with the critic loss function -> loss doesn't go to 0 but it's consistent with everyone's implementation
-    - The action side and the state side of the critic are added together after the relu, not before (as msinto93 does)
-    - Make sure to update Qmin and Qmax when changing the environment
-    - State is now normalized by dividing by the maximum state possible. Occurs in the agent.
+    - Currently training on openAI's 'CartPole-v0' gym environment with discrete actions
+      and states (to ensure it's learning properly)
+    
+
     
 Temporary Notes:
-    - REPLAY_BUFFER_START_TRAINING_FULLNESS has been set to 0 (previously 10000)
-    - Reward signal is divided by 100.0. I do not agree with this, but I'm doing it in an effort to mimic msinto93's solution.
-    - MIN_Q is -20.0 instead of -2000.0 to test the effect of scaling the reward signal 
-    - NUMBER_OF_EPISODES = 50 to see if critic overfits
 
-@author: Kirk Hovell
 
-Special thanks to:
-    - msinto93 (https://github.com/msinto93)
-    - SuReLI   (https://github.com/SuReLI)
-    for publishing their codes!
+@author: Kirkados (khovell@gmail.com) and PTStephD (stephane.magnan.11@gmail.com)
 
-Code started: October 15, 2018
+Code started: January 20, 2019
 """
 
 # Importing libraries & other classes

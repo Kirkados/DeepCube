@@ -33,7 +33,8 @@ class Cube():
             one_hot=np.zeros((moves,1))
             
             #randomly select a move
-            this_ind = np.random.randint(0,high=moves-1)
+            #this_ind = np.random.randint(0,high=moves-1)
+            this_ind = np.random.randint(0,high=moves) # high is exclusive
             one_hot[this_ind]=1
             
             #parse 1hot, where rotation is applied
