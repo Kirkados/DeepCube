@@ -15,10 +15,9 @@ class Cube():
         state = np.empty((6,dimension,dimension))
         
         for face_ind in range(0,6):
-            state[face_ind,:,:]=face_ind+1
-        cube_slices = np.empty((6,dimension,dimension))      
+            state[face_ind,:,:]=face_ind+1    
         
-        self.state = cube_slices
+        self.state = state
         self.dimension = dimension
         self.solved = True
         self.reward = 0
@@ -262,7 +261,7 @@ class Cube():
         
         face_ind = np.mod(np.ceil((ind[0][0]+1)/2),6)
         #
-        print('Face: ',face_ind,' Clockwise: ',clockwise,' Depth: ',depth)
+        #print('Face: ',face_ind,' Clockwise: ',clockwise,' Depth: ',depth)
         if face_ind == 0:
             self.move_U(clockwise,depth)
         elif face_ind == 1:
